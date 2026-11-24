@@ -1,10 +1,10 @@
 {
   "name": "opencode-magnific",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "OpenCode / magpie plugin: Magnific image and video generation (Flux, Nano Banana, Seedream, Kling, Veo, Seedance, WAN, …) as agent tools and native magpie image and video models",
   "type": "module",
   "main": "./index.mjs",
-  "files": ["index.mjs", "catalog.mjs", "magnific.mjs", "native.mjs", "catalog.json", "README.md", "LICENSE"],
+  "files": ["index.mjs", "args.mjs", "catalog.mjs", "magnific.mjs", "native.mjs", "catalog.json", "README.md", "LICENSE"],
   "keywords": ["opencode", "opencode-plugin", "magpie", "magpie-plugin", "magnific", "image-generation", "video-generation"],
   "license": "MIT",
   "author": "hubo",

@@ -56,7 +56,7 @@ API key 在 <https://www.magnific.com/user/organization/api-keys> 生成（需�
 **magpie**
 
 ```bash
-magpie plugin add opencode-magnific                 # 或本地目录: magpie plugin add /path/to/opencode-magnific
+magpie plugin add opencode-magnific                 # 或社区包: magpie plugin add @magpie-community/magpie-magnific-api
 magpie plugin login magnific                        # 粘贴 API key
 magpie plugin                                       # 应看到 magnific (Magnific, 20 models) signed in，以及三个 tools
 ```
@@ -97,9 +97,14 @@ bun run catalog          # 从 Magnific 的 OpenAPI 规范重新生成 catalog.j
 | --- | --- |
 | `index.mjs` | 插件入口，只导出 `MagnificPlugin`：`auth` 钩子、三个工具，magpie 下另有 `config` / `provider` 钩子 |
 | `native.mjs` | magpie 原生模型：清单、OpenAI Images / Videos 请求到 Magnific 的换算 |
+| `args.mjs` | 工具参数：magpie 用 JSON Schema，OpenCode 用同一份定义生成的 zod 字段 |
 | `catalog.mjs` / `catalog.json` | 模型清单、查找、参数校验 |
 | `magnific.mjs` | 凭证查找、REST 调用、轮询、下载 |
 | `scripts/build-catalog.mjs` | 由 OpenAPI 规范生成 `catalog.json` |
+
+## 社区包
+
+同一份代码也在 [magpie-community/plugins](https://github.com/magpie-community/plugins) 的 `packages/magnific-api`，包名 `@magpie-community/magpie-magnific-api`，不带依赖，面向 magpie。OpenCode 请用本包。
 
 ## 许可
 
