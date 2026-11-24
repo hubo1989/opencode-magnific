@@ -1,0 +1,33 @@
+{
+  "name": "opencode-magnific",
+  "version": "0.1.0",
+  "description": "OpenCode / magpie plugin: Magnific image and video generation (Flux, Nano Banana, Seedream, Kling, Veo, Seedance, WAN, …) as agent tools and native magpie image and video models",
+  "type": "module",
+  "main": "./index.mjs",
+  "files": ["index.mjs", "catalog.mjs", "magnific.mjs", "native.mjs", "catalog.json", "README.md", "LICENSE"],
+  "keywords": ["opencode", "opencode-plugin", "magpie", "magpie-plugin", "magnific", "image-generation", "video-generation"],
+  "license": "MIT",
+  "author": "hubo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hubo1989/opencode-magnific.git"
+  },
+  "homepage": "https://github.com/hubo1989/opencode-magnific#readme",
+  "bugs": {
+    "url": "https://github.com/hubo1989/opencode-magnific/issues"
+  },
+  "scripts": {
+    "test": "bun test",
+    "catalog": "bun scripts/build-catalog.mjs"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "1.19.6"
+  },
+  "magpie": {
+    "name": "Magnific",
+    "summary": {
+      "en": "Magnific image and video generation with a Magnific API key: 20 native image and video models (Mystic, Nano Banana, Flux, Veo, Kling, Seedance, WAN, …) and tools that reach all 140 endpoints from every agent.",
+      "zh": "用 Magnific API key 接入生图、生视频：20 个原生生图/视频模型（Mystic、Nano Banana、Flux、Veo、Kling、Seedance、WAN 等），外加每个 agent 都能调用、覆盖全部 140 个端点的工具。"
+    }
+  }
+}
