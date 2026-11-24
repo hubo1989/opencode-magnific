@@ -1,14 +1,14 @@
 // OpenCode / magpie plugin: Magnific image and video generation as tools.
 // The one export is the plugin (hosts call every exported function as one);
-// the catalog and the REST client live in the modules imported here.
-import { tool } from "@opencode-ai/plugin"
+// the catalog and the REST client live in the modules imported here. It has
+// no dependency of its own: see args.mjs for how OpenCode gets zod fields.
 import { homedir } from "node:os"
 import { resolve } from "node:path"
+import { argsOf, zodOf } from "./args.mjs"
 import { buildBody, findModel, listModels } from "./catalog.mjs"
 import { PROVIDER, createClient, credentialOf, download } from "./magnific.mjs"
 import { API_BASE, LOCAL_BASE, nativeFetch, providerConfig, providerModels } from "./native.mjs"
 
-const z = tool.schema
 // magpie ends a tool call after 55 seconds, so one call waits at most 50
 // and hands back a task id that magnific_task picks up.
 const MAX_WAIT = 50
@@ -43,11 +43,12 @@ export const MagnificPlugin = async (input, options) => {
     }
   }
 
+  const z = o.jsonArgs ? null : await zodOf()
+  const tool = ({ description, properties, required, execute }) => ({ description, args: argsOf(properties, required, z), execute })
   const common = {
-    wait_seconds: z.number().int().min(0).max(MAX_WAIT).optional()
-      .describe(`How long to wait for the result, 0 to ${MAX_WAIT} seconds (default ${DEFAULT_WAIT}). Videos usually take longer: the call then returns a task id for magnific_task.`),
-    output_dir: z.string().optional().describe("Folder to save results in, absolute or relative to the project (default: magnific-output in the project, or in the home folder when there is no project)."),
-    account: z.string().optional().describe("Which signed-in Magnific account to use, when there are several (e.g. magnific#ab12cd)."),
+    wait_seconds: { type: "integer", minimum: 0, maximum: MAX_WAIT, description: `How long to wait for the result, 0 to ${MAX_WAIT} seconds (default ${DEFAULT_WAIT}). Videos usually take longer: the call then returns a task id for magnific_task.` },
+    output_dir: { type: "string", description: "Folder to save results in, absolute or relative to the project (default: magnific-output in the project, or in the home folder when there is no project)." },
+    account: { type: "string", description: "Which signed-in Magnific account to use, when there are several (e.g. magnific#ab12cd)." },
   }
 
   // magpie lists image-only and video-only models as its drawers and video
@@ -69,13 +70,13 @@ export const MagnificPlugin = async (input, options) => {
     auth: {
       provider: PROVIDER,
       methods: [{ type: "api", label: "Magnific API key" }],
-      async loader(getAuth) {
-        if (!inMagpie) return {}
+      // OpenCode has no models of this provider to load anything for.
+      ...(inMagpie ? { async loader(getAuth) {
         const auth = await getAuth()
         if (auth?.type !== "api" || !auth.key) throw new Error("No Magnific API key. Sign in with `magpie plugin login magnific`.")
         const client = createClient({ key: String(auth.key).trim(), base: o.apiBase, fetch: o.fetch })
         return { baseURL: LOCAL_BASE, apiKey: PROVIDER, fetch: nativeFetch(client, { fetch: o.fetch, pollMs: o.pollMs }) }
-      },
+      } } : {}),
     },
 
     tool: {
@@ -83,10 +84,10 @@ export const MagnificPlugin = async (input, options) => {
         description:
           "List the Magnific image and video generation models, or show one model's parameters. " +
           "Call it with `model` before magnific_generate to learn that model's parameter names and allowed values.",
-        args: {
-          kind: z.enum(["image", "video"]).optional().describe("Only image or only video models."),
-          search: z.string().optional().describe("Words the model id or name must contain, e.g. \"kling 3\" or \"veo\"."),
-          model: z.string().optional().describe("A model id: returns its parameters instead of the list."),
+        properties: {
+          kind: { type: "string", enum: ["image", "video"], description: "Only image or only video models." },
+          search: { type: "string", description: "Words the model id or name must contain, e.g. \"kling 3\" or \"veo\"." },
+          model: { type: "string", description: "A model id: returns its parameters instead of the list." },
         },
         async execute({ kind, search, model }) {
           if (model) {
@@ -105,13 +106,13 @@ export const MagnificPlugin = async (input, options) => {
           "`model` is an id from magnific_models, e.g. text-to-image/nano-banana-pro, text-to-image/flux-2-pro, mystic, " +
           "video/kling-v3-pro, text-to-video/veo-3-1, image-to-video/veo-3-1. Parameter names differ per model: " +
           "check them with magnific_models first. Returns the saved file paths, or a task id when it is still running.",
-        args: {
-          model: z.string().describe("Model id from magnific_models."),
-          prompt: z.string().optional().describe("What to generate. Sent as the model's `prompt` parameter."),
-          params: z.record(z.string(), z.any()).optional()
-            .describe("The model's other parameters, by the names magnific_models shows (aspect_ratio, duration, image, …). Image parameters take a public URL; those that accept base64 also take a local file path."),
+        properties: {
+          model: { type: "string", description: "Model id from magnific_models." },
+          prompt: { type: "string", description: "What to generate. Sent as the model's `prompt` parameter." },
+          params: { type: "object", description: "The model's other parameters, by the names magnific_models shows (aspect_ratio, duration, image, …). Image parameters take a public URL; those that accept base64 also take a local file path." },
           ...common,
         },
+        required: ["model"],
         async execute({ model: id, prompt, params, wait_seconds, output_dir, account }, ctx) {
           const model = findModel(id)
           const body = buildBody(model, prompt, params)
@@ -129,10 +130,11 @@ export const MagnificPlugin = async (input, options) => {
         description:
           "Check a Magnific generation started by magnific_generate, wait for it, and save the result to disk when it is done. " +
           "Call it again while the status is not COMPLETED or FAILED.",
-        args: {
-          task: z.string().describe("The task id magnific_generate returned, in the form <model>:<task id>."),
+        properties: {
+          task: { type: "string", description: "The task id magnific_generate returned, in the form <model>:<task id>." },
           ...common,
         },
+        required: ["task"],
         async execute({ task: handle, wait_seconds, output_dir, account }, ctx) {
           const cut = String(handle).lastIndexOf(":")
           if (cut < 1) throw new Error("`task` must be the id magnific_generate returned: <model>:<task id>")

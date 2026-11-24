@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { argsOf, zodOf } from "./args.mjs"
 import { buildBody, findModel, listModels, models } from "./catalog.mjs"
 import { credentialOf } from "./magnific.mjs"
 import { NATIVE, translate } from "./native.mjs"
@@ -111,6 +112,19 @@ describe("plugin", () => {
     expect(hooks.auth.methods).toEqual([{ type: "api", label: "Magnific API key" }])
     expect(Object.keys(hooks.tool)).toEqual(["magnific_models", "magnific_generate", "magnific_task"])
   })
+  test("arguments are JSON Schema, or zod fields where OpenCode's package is there", async () => {
+    const plain = await entry.MagnificPlugin({}, { jsonArgs: true })
+    expect(plain.tool.magnific_generate.args).toMatchObject({ type: "object", required: ["model"], properties: { params: { type: "object" }, wait_seconds: { type: "integer", maximum: 50 } } })
+    expect(plain.tool.magnific_models.args.required).toBeUndefined()
+    const z = await zodOf()
+    if (!z) return
+    const shape = z.object(argsOf({ a: { type: "string" }, n: { type: "integer", minimum: 0, maximum: 50 }, k: { type: "string", enum: ["x", "y"] }, o: { type: "object" } }, ["a"], z))
+    expect(shape.parse({ a: "s", n: 3, k: "x", o: { any: 1 } })).toEqual({ a: "s", n: 3, k: "x", o: { any: 1 } })
+    expect(shape.safeParse({}).success).toBe(false)
+    expect(shape.safeParse({ a: "s", n: 51 }).success).toBe(false)
+    expect(shape.safeParse({ a: "s", k: "z" }).success).toBe(false)
+    expect(z.object(hooks.tool.magnific_generate.args).safeParse({ model: "mystic", params: { a: 1 } }).success).toBe(true)
+  })
   test("magnific_models lists, filters and describes", async () => {
     const list = await hooks.tool.magnific_models.execute({ kind: "video", search: "veo" }, ctx())
     expect(list).toContain("text-to-video/veo-3-1  [video]")
@@ -153,7 +167,7 @@ describe("plugin", () => {
   test("OpenCode gets tools only: no provider models, an empty loader", async () => {
     expect(hooks.config).toBeUndefined()
     expect(hooks.provider).toBeUndefined()
-    expect(await hooks.auth.loader(async () => ({ type: "api", key: "good" }))).toEqual({})
+    expect(hooks.auth.loader).toBeUndefined()
   })
   test("a failed generation saves nothing", async () => {
     const out = await run("magnific_generate", { model: "mystic", prompt: "bad idea" })
